@@ -1,6 +1,7 @@
 target_sources(cl_main
-  PRIVATE
-  src/utils.hpp
-  src/utils.cpp
-  src/host.cpp
+  PRIVATE 
+  utils.cpp
+  opencl_framework.cpp
+  utils.hpp
+  opencl_framework.hpp
 )

@@ -1,13 +1,29 @@
 cmake_minimum_required(VERSION 3.12)
 
-add_executable(cl_main "")
+add_library(cl_main STATIC)
+
 add_subdirectory(src)
 
-target_include_directories(cl_main
-  PRIVATE
-  $ENV{INTELOCLSDKROOT}include
+if(MSVC)
+  target_include_directories(cl_main
+    PUBLIC 
+    $ENV{INTELOCLSDKROOT}include
+  )
+  target_link_libraries(cl_main
+    PUBLIC $ENV{INTELOCLSDKROOT}lib/x86/OpenCL.lib
+  )
+elseif(UNIX)
+  # assuming here openCL headers are installed under linux
+  find_package(OpenCL REQUIRED)
+  target_link_libraries(cl_main
+    PUBLIC OpenCL::OpenCL
+  )
+endif()
+
+add_executable(sandbox 
+  src/sandbox_app.cpp
 )
 
-target_link_libraries(cl_main
-  PRIVATE $ENV{INTELOCLSDKROOT}lib/x86/OpenCL.lib
+target_link_libraries(sandbox
+  PRIVATE cl_main
 )
