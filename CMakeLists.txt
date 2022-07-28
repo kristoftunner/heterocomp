@@ -5,6 +5,7 @@ add_library(cl_main STATIC)
 add_subdirectory(src)
 
 if(MSVC)
+  message(STATUS "we are under windows")  
   target_include_directories(cl_main
     PUBLIC 
     $ENV{INTELOCLSDKROOT}include
@@ -14,10 +15,13 @@ if(MSVC)
   )
 elseif(UNIX)
   # assuming here openCL headers are installed under linux
+  message(STATUS "we are under linux")  
   find_package(OpenCL REQUIRED)
   target_link_libraries(cl_main
     PUBLIC OpenCL::OpenCL
   )
+elseif(WIN32)
+  message(STATUS "win32????")
 endif()
 
 add_executable(sandbox 

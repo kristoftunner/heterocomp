@@ -7,7 +7,7 @@ const char* TranslateOpenCLError(cl_int errorCode);
 
 class Benchmark {
 public:
-  void StartMark();
+  void StartMark(const std::string& message);
   void StopMark();
 private:
   std::vector<double> m_markedTimes;
