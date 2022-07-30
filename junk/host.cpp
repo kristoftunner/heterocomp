@@ -68,7 +68,9 @@ int main()
   }
 
   cl_platform_id selectedPlatformId = platforms[0];
-  cl_context_properties contextProperties[] = { CL_CONTEXT_PLATFORM, (cl_context_properties)selectedPlatformId,0 };
+
+  /* create context */
+  cl_context_properties contextProperties[] = { CL_CONTEXT_PLATFORM, (cl_context_properties)selectedPlatformId, 0 };
   cl_context context = clCreateContextFromType(contextProperties, CL_DEVICE_TYPE_GPU, NULL, NULL, &err);
   if (err != CL_SUCCESS || context == NULL)
   {

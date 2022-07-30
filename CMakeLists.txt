@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-
+project(heterocomp CXX)
 add_library(cl_main STATIC)
 
 add_subdirectory(src)

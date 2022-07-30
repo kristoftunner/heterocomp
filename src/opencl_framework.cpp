@@ -1,6 +1,6 @@
 #include "opencl_framework.hpp"
 
-void OpenclFramework::QueryPlatforms()
+void CLFramework::QueryPlatforms()
 {
   /* get the platforms and the names*/
   uint32_t numberOfPlatforms;
@@ -19,6 +19,7 @@ void OpenclFramework::QueryPlatforms()
     std::string platformName;
     platformName.resize(nameLength);
     err = clGetPlatformInfo(platformId, CL_PLATFORM_NAME, nameLength, const_cast<char*>(platformName.data()), nullptr);
+    platformName.erase(platformName.size()-1);
     uint32_t numberOfDevices = 0;
     err = clGetDeviceIDs(platformId, CL_DEVICE_TYPE_ALL, 0, nullptr, &numberOfDevices);
     if(err == CL_SUCCESS)
@@ -30,7 +31,7 @@ void OpenclFramework::QueryPlatforms()
       {
         cl_device_type devType;
         err = clGetDeviceInfo(dev, CL_DEVICE_TYPE, sizeof(cl_device_type), &devType, nullptr);
-        info.devices.push_back(devType);
+        info.devices.push_back({devType, dev});
       }
     }
     CheckError(err);
@@ -109,7 +110,7 @@ static std::string TranslateError(int error)
   }
 }
 
-void OpenclFramework::CheckError(int error)
+void CLFramework::CheckError(int error)
 {
   if (error != CL_SUCCESS)
   {
@@ -117,15 +118,96 @@ void OpenclFramework::CheckError(int error)
   }
 }
 
-void OpenclFramework::ChoosePlatform(const std::string& platformName, const DeviceType& type)
+void CLFramework::ChoosePlatform(const std::string& platformName, const DeviceType& type)
 {
-  cl_device_type devType;
-  switch(type)
+  if(m_platforms.find(platformName) != m_platforms.end())
   {
-  case DeviceType::PLATFORM_CPU:
-    devType = CL_DEVICE_TYPE_CPU;
-    break;
-  case DeviceType::PLATFROM_GPU:
-    devType = CL_DEVICE_TYPE_GPU;
+    if(m_platforms.at(platformName).HasDeviceType(type))
+    {
+      PlatformInfo info = m_platforms.at(platformName);
+      m_selectedPlatformId = info.platformId;
+      m_selectedDeviceId = info.GetDevice(type);
+      return;
+    }
+  }
+  
+  throw std::runtime_error("Choosing OpenCL platform failed");
+}
+
+void CLFramework::CreateContext()
+{
+  /* create context and command queue, in order to create kernels and */
+  cl_context_properties contextProperties[] = { CL_CONTEXT_PLATFORM, (cl_context_properties)m_selectedPlatformId, 0 };
+  cl_int err;
+  m_context = clCreateContext(contextProperties, 1, &m_selectedDeviceId, nullptr, nullptr, &err);
+  CheckError(err);
+  
+  const cl_command_queue_properties properties[] = {CL_QUEUE_PROPERTIES, CL_QUEUE_PROFILING_ENABLE, 0};
+  m_commandQueue = clCreateCommandQueueWithProperties(m_context, m_selectedDeviceId, properties, &err);
+  CheckError(err);
+}
+
+void CLFramework::BuildKernel(const std::experimental::filesystem::path& path, const int numberOfArguments)
+{
+  m_numberOfKernelArguments = numberOfArguments;
+  const std::string source = ReadSourceFromFile("../src/kernels/add.cl");
+  const size_t sourceSize = source.size();
+  const char* sourceData = source.data();
+  cl_int err;
+  m_program = clCreateProgramWithSource(m_context, 1, &sourceData, &sourceSize, &err);
+  /* build the program explicitly*/
+  CheckError(err);
+  err = clBuildProgram(m_program, 1, const_cast<const cl_device_id*>(&m_selectedDeviceId), "", nullptr, nullptr);
+  if(err != CL_SUCCESS)
+  {
+    CheckError(err);
+    if(err == CL_BUILD_PROGRAM_FAILURE)
+    {
+      size_t logSize = 0;
+      clGetProgramBuildInfo(m_program, m_selectedDeviceId, CL_PROGRAM_BUILD_LOG, 0, nullptr, &logSize);
+      std::string buildLog;
+      buildLog.resize(logSize);
+      clGetProgramBuildInfo(m_program, m_selectedDeviceId, CL_PROGRAM_BUILD_LOG, logSize, const_cast<char*>(buildLog.data()), nullptr);
+    }
+    throw std::runtime_error("Unable to build program");
+  }
+  m_kernel = clCreateKernel(m_program, "Add", &err);
+  CheckError(err);
+}
+
+void CLFramework::RunKernel(std::vector<size_t>& globalWorkSize)
+{
+  cl_int err;
+  m_benchmark.StartMark("kernel run");
+  /* TODO: this can be pimped later */
+  err = clEnqueueNDRangeKernel(m_commandQueue, m_kernel, 2, nullptr, globalWorkSize.data(), nullptr, 0, nullptr, nullptr);
+  CheckError(err);
+  clFinish(m_commandQueue);
+  m_benchmark.StopMark();
+}
+
+CLFramework::~CLFramework()
+{
+  cl_int err = clReleaseKernel(m_kernel);
+  CheckError(err);
+  if (m_program)
+  {
+    err = clReleaseProgram(m_program);
+    CheckError(err);
+  }
+  if (m_commandQueue)
+  {
+    err = clReleaseCommandQueue(m_commandQueue);
+    CheckError(err);
+  }
+  if (m_selectedDeviceId)
+  {
+    err = clReleaseDevice(m_selectedDeviceId);
+    CheckError(err);
+  }
+  if (m_context)
+  {
+    err = clReleaseContext(m_context);
+    CheckError(err);
   }
 }
