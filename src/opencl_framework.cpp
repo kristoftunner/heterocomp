@@ -180,7 +180,7 @@ void CLFramework::RunKernel(std::vector<size_t>& globalWorkSize)
   cl_int err;
   m_benchmark.StartMark("kernel run");
   /* TODO: this can be pimped later */
-  err = clEnqueueNDRangeKernel(m_commandQueue, m_kernel, 2, nullptr, globalWorkSize.data(), nullptr, 0, nullptr, nullptr);
+  err = clEnqueueNDRangeKernel(m_commandQueue, m_kernel, globalWorkSize.size(), nullptr, globalWorkSize.data(), nullptr, 0, nullptr, nullptr);
   CheckError(err);
   clFinish(m_commandQueue);
   m_benchmark.StopMark();

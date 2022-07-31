@@ -5,6 +5,7 @@
 
 #include "CL/cl.h"
 #include "utils.hpp"
+#include "env/env.hpp"
 
 static std::string ReadSourceFromFile(const std::experimental::filesystem::path &path)
 {
@@ -73,31 +74,31 @@ struct PlatformInfo{
 class CLFramework;
 
 template<typename T>
-struct OpenclMemory {
+struct CLMemory {
   T* hostPtr;
   size_t hostSize;
   cl_mem destPtr;
 
   /* propagate the memory flags somehow to the ctor*/
-  OpenclMemory(cl_context context, uint64_t flags, size_t size)
+  CLMemory(cl_context context, uint64_t flags, size_t size)
   {
     size_t optimizedSize = ((sizeof(T) * size - 1) / 64 + 1) * 64;
-    hostPtr = reinterpret_cast<T*>(_aligned_malloc(optimizedSize, 4096));
+    hostPtr = reinterpret_cast<T*>(EnvUtils::AllocAligned(optimizedSize, 4096));
     memset(reinterpret_cast<void*>(hostPtr), 0, size);
     cl_int err;
     destPtr = clCreateBuffer(context, flags, sizeof(T) * size, hostPtr, &err);
     CLFramework::CheckError(err);
   }
 
-  ~OpenclMemory()
+  ~CLMemory()
   {
-    cl_int err = clReleaseMemObject(destPtr);
     //_aligned_free(hostPtr);
+    cl_int err = clReleaseMemObject(destPtr);
   }
   
   /* cctor and copy assignment cannot be done because of the memory release */
-  OpenclMemory(const OpenclMemory&) = delete;
-  OpenclMemory& operator=(const OpenclMemory&) = delete;
+  CLMemory(const CLMemory&) = delete;
+  CLMemory& operator=(const CLMemory&) = delete;
 };
 
 class CLFramework {
@@ -109,9 +110,9 @@ public:
   void CreateContext();
   void BuildKernel(const std::experimental::filesystem::path& path, const int numberOfArguments);
   template<typename T>
-  void SetKernelBufferArg(const int index, OpenclMemory<T>& mem);
+  void SetKernelBufferArg(const int index, CLMemory<T>& mem);
   template<typename T>
-  const T* GetKernelOutput(OpenclMemory<T> clMemory);
+  const T* GetKernelOutput(CLMemory<T> clMemory);
   void RunKernel(std::vector<size_t>& globalWorkSize);
   cl_context GetContext(){return m_context;}
 private:
@@ -129,7 +130,7 @@ private:
 
 
 template<typename T>
-void CLFramework::SetKernelBufferArg(const int index, OpenclMemory<T>& mem)
+void CLFramework::SetKernelBufferArg(const int index, CLMemory<T>& mem)
 {
   if (index < m_numberOfKernelArguments)
   {

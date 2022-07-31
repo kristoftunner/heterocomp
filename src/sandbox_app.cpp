@@ -10,15 +10,16 @@ int main()
   framework.CreateContext();
   framework.BuildKernel("kernels/add.cl", 3);
   
-  const size_t arrayWidth = 1024;
-  const size_t  arrayHeight = 1024;
-  OpenclMemory<cl_int> srcA(framework.GetContext(),CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR, arrayWidth * arrayHeight);
-  OpenclMemory<cl_int> srcB(framework.GetContext(),CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR, arrayWidth * arrayHeight);
-  OpenclMemory<cl_int> destC(framework.GetContext(),CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR, arrayWidth * arrayHeight);
+  const size_t arrayWidth = 100;
+  const size_t arrayHeight = 100;
+  const size_t arrayDepth = 3;
+  CLMemory<cl_int> srcA(framework.GetContext(),CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR, arrayWidth * arrayHeight * arrayDepth);
+  CLMemory<cl_int> srcB(framework.GetContext(),CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR, arrayWidth * arrayHeight * arrayDepth);
+  CLMemory<cl_int> destC(framework.GetContext(),CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR, arrayWidth * arrayHeight * arrayDepth);
   /* generate here some inputs and oututs */
   int valA = 1;
   int valB = 10;
-  for(auto i = 0; i < arrayHeight*arrayWidth; i++)
+  for(auto i = 0; i < arrayHeight*arrayWidth*arrayDepth; i++)
   {
     srcA.hostPtr[i] = valA;
     srcB.hostPtr[i] = valB;
@@ -27,19 +28,19 @@ int main()
   framework.SetKernelBufferArg<cl_int>(0, srcA);
   framework.SetKernelBufferArg<cl_int>(1, srcB);
   framework.SetKernelBufferArg<cl_int>(2, destC);
-  std::vector<size_t> globalWorkSize = { arrayWidth, arrayHeight };
+  std::vector<size_t> globalWorkSize = { arrayDepth, arrayWidth, arrayHeight };
   framework.RunKernel(globalWorkSize);
   cl_int err;
-  for(auto i = 0; i < arrayHeight*arrayHeight; i++)
+  for(auto i = 0; i < arrayHeight*arrayHeight*arrayDepth; i++)
   {
     if(destC.hostPtr[i] != srcA.hostPtr[i] + srcB.hostPtr[i])
     {
-      std::cout << "verification failed" << std::endl; 
+      std::cout << "fail, dest is: " << destC.hostPtr[i] << std::endl; 
     }
   }
   std::cout << "herllo";
-  srcA.~OpenclMemory();
-  srcB.~OpenclMemory();
-  destC.~OpenclMemory();
+  srcA.~CLMemory();
+  srcB.~CLMemory();
+  destC.~CLMemory();
 
 }
