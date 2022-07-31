@@ -2,6 +2,7 @@
 
 #include "common.hpp"
 #include <map>
+#include <cstring>
 
 #include "CL/cl.h"
 #include "utils.hpp"

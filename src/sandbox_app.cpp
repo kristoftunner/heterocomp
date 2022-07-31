@@ -10,6 +10,13 @@ int main()
   framework.CreateContext();
   framework.BuildKernel("kernels/add.cl", 3);
   
+  /* read the image into a cl_mem 2d image */
+  std::vector<uint8_t> imageData;
+  constexpr int imageWidth = 512;
+  constexpr int imageHeight = 400;
+  const cl_image_format imgFormat = {CL_RGB, CL_UNSIGNED_INT8};
+  cl_mem im = clCreateImage2D(framework.GetContext(), CL_MEM_READ_ONLY | CL_MEM_HOST_WRITE_ONLY, &imgFormat, imageWidth, imageHeight, imageWidth * imageHeight, reinterpret_cast<void*>(imageData.data()));
+  /* working with arrays */
   const size_t arrayWidth = 1024;
   const size_t  arrayHeight = 1024;
   OpenclMemory<cl_int> srcA(framework.GetContext(),CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR, arrayWidth * arrayHeight);
