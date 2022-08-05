@@ -147,40 +147,43 @@ void CLFramework::CreateContext()
   CheckError(err);
 }
 
-void CLFramework::BuildKernel(const std::experimental::filesystem::path& path, const int numberOfArguments)
+void CLFramework::BuildKernel(const std::experimental::filesystem::path& path, const int numberOfArguments, const std::string& kernelName)
 {
   m_numberOfKernelArguments = numberOfArguments;
-  const std::string source = ReadSourceFromFile("../src/kernels/add.cl");
+  const std::string source = ReadSourceFromFile(path);
   const size_t sourceSize = source.size();
   const char* sourceData = source.data();
   cl_int err;
-  m_program = clCreateProgramWithSource(m_context, 1, &sourceData, &sourceSize, &err);
+  cl_program program = clCreateProgramWithSource(m_context, 1, &sourceData, &sourceSize, &err);
   /* build the program explicitly*/
   CheckError(err);
-  err = clBuildProgram(m_program, 1, const_cast<const cl_device_id*>(&m_selectedDeviceId), "", nullptr, nullptr);
+  err = clBuildProgram(program, 1, const_cast<const cl_device_id*>(&m_selectedDeviceId), "", nullptr, nullptr);
   if(err != CL_SUCCESS)
   {
     CheckError(err);
     if(err == CL_BUILD_PROGRAM_FAILURE)
     {
       size_t logSize = 0;
-      clGetProgramBuildInfo(m_program, m_selectedDeviceId, CL_PROGRAM_BUILD_LOG, 0, nullptr, &logSize);
+      clGetProgramBuildInfo(program, m_selectedDeviceId, CL_PROGRAM_BUILD_LOG, 0, nullptr, &logSize);
       std::string buildLog;
       buildLog.resize(logSize);
-      clGetProgramBuildInfo(m_program, m_selectedDeviceId, CL_PROGRAM_BUILD_LOG, logSize, const_cast<char*>(buildLog.data()), nullptr);
+      clGetProgramBuildInfo(program, m_selectedDeviceId, CL_PROGRAM_BUILD_LOG, logSize, const_cast<char*>(buildLog.data()), nullptr);
+      std::cout << buildLog << std::endl;
     }
     throw std::runtime_error("Unable to build program");
   }
-  m_kernel = clCreateKernel(m_program, "Add", &err);
+  cl_kernel kernel = clCreateKernel(program, kernelName.c_str(), &err);
+  m_programs.push_back(program);
+  m_kernels.push_back(kernel);
   CheckError(err);
 }
 
-void CLFramework::RunKernel(std::vector<size_t>& globalWorkSize)
+void CLFramework::RunKernel(std::vector<size_t>& globalWorkSize, const int kernelIndex)
 {
   cl_int err;
   m_benchmark.StartMark("kernel run");
   /* TODO: this can be pimped later */
-  err = clEnqueueNDRangeKernel(m_commandQueue, m_kernel, globalWorkSize.size(), nullptr, globalWorkSize.data(), nullptr, 0, nullptr, nullptr);
+  err = clEnqueueNDRangeKernel(m_commandQueue, m_kernels[kernelIndex], globalWorkSize.size(), nullptr, globalWorkSize.data(), nullptr, 0, nullptr, nullptr);
   CheckError(err);
   clFinish(m_commandQueue);
   m_benchmark.StopMark();
@@ -188,12 +191,22 @@ void CLFramework::RunKernel(std::vector<size_t>& globalWorkSize)
 
 CLFramework::~CLFramework()
 {
-  cl_int err = clReleaseKernel(m_kernel);
-  CheckError(err);
-  if (m_program)
+  cl_int err;
+  for(auto kernel : m_kernels)
   {
-    err = clReleaseProgram(m_program);
-    CheckError(err);
+    if(kernel)
+    {
+      err = clReleaseKernel(kernel);
+      CheckError(err);
+    }
+  }
+  for(auto program : m_programs)
+  {
+    if(program)
+    {
+      err = clReleaseProgram(program);
+      CheckError(err);
+    }
   }
   if (m_commandQueue)
   {

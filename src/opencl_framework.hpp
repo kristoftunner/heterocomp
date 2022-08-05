@@ -108,13 +108,14 @@ public:
   static void CheckError(int error);
   void ChoosePlatform(const std::string& platformName, const DeviceType& type);
   void CreateContext();
-  void BuildKernel(const std::experimental::filesystem::path& path, const int numberOfArguments);
+  void BuildKernel(const std::experimental::filesystem::path& path, const int numberOfArguments, const std::string& kernelName);
   template<typename T>
-  void SetKernelBufferArg(const int index, CLMemory<T>& mem);
+  void SetKernelBufferArg(const int kernelIndex, const int argumentIndex, CLMemory<T>& mem);
   template<typename T>
   const T* GetKernelOutput(CLMemory<T> clMemory);
-  void RunKernel(std::vector<size_t>& globalWorkSize);
+  void RunKernel(std::vector<size_t>& globalWorkSize, const int kernelIndex);
   cl_context GetContext(){return m_context;}
+  cl_kernel GetKernel(int index){return m_kernels[index];}
 private:
   std::map<std::string, PlatformInfo> m_platforms;
   cl_context_properties m_properties;
@@ -122,19 +123,19 @@ private:
   cl_platform_id m_selectedPlatformId;
   cl_context m_context;
   cl_command_queue m_commandQueue;
-  cl_kernel m_kernel;
+  std::vector<cl_program> m_programs;
+  std::vector<cl_kernel> m_kernels;
   int m_numberOfKernelArguments;
-  cl_program m_program;
   Benchmark m_benchmark;
 };
 
 
 template<typename T>
-void CLFramework::SetKernelBufferArg(const int index, CLMemory<T>& mem)
+void CLFramework::SetKernelBufferArg(const int kernelIndex, const int argumentIndex, CLMemory<T>& mem)
 {
-  if (index < m_numberOfKernelArguments)
+  if (argumentIndex < m_numberOfKernelArguments)
   {
-    cl_int err = clSetKernelArg(m_kernel, index, sizeof(cl_mem), reinterpret_cast<const void*>(&(mem.destPtr)));
+    cl_int err = clSetKernelArg(m_kernels[kernelIndex], argumentIndex, sizeof(cl_mem), reinterpret_cast<const void*>(&(mem.destPtr)));
     CheckError(err);
   }
   else
