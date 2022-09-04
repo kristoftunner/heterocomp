@@ -3,7 +3,10 @@
 #include "CL/cl.h"
 #include "common.hpp"
 
-const char* TranslateOpenCLError(cl_int errorCode);
+class CLUtils {
+public:
+  static void CheckError(int error);
+};
 
 class Benchmark {
 public:

@@ -2,12 +2,12 @@
 
 #include "common.hpp"
 #include <map>
-
+#include <string.h>
 #include "CL/cl.h"
 #include "utils.hpp"
 #include "env/env.hpp"
 
-static std::string ReadSourceFromFile(const std::experimental::filesystem::path &path)
+static std::string ReadSourceFromFile(const std::string& path)
 {
   std::string source;
   std::ifstream file(path, std::ios::in);
@@ -87,7 +87,7 @@ struct CLMemory {
     memset(reinterpret_cast<void*>(hostPtr), 0, size);
     cl_int err;
     destPtr = clCreateBuffer(context, flags, sizeof(T) * size, hostPtr, &err);
-    CLFramework::CheckError(err);
+    CLUtils::CheckError(err);
   }
 
   ~CLMemory()
@@ -105,10 +105,9 @@ class CLFramework {
 public:
   ~CLFramework();
   void QueryPlatforms();
-  static void CheckError(int error);
   void ChoosePlatform(const std::string& platformName, const DeviceType& type);
   void CreateContext();
-  void BuildKernel(const std::experimental::filesystem::path& path, const int numberOfArguments, const std::string& kernelName);
+  void BuildKernel(const std::string& path, const int numberOfArguments, const std::string& kernelName);
   template<typename T>
   void SetKernelBufferArg(const int kernelIndex, const int argumentIndex, CLMemory<T>& mem);
   template<typename T>
@@ -136,7 +135,7 @@ void CLFramework::SetKernelBufferArg(const int kernelIndex, const int argumentIn
   if (argumentIndex < m_numberOfKernelArguments)
   {
     cl_int err = clSetKernelArg(m_kernels[kernelIndex], argumentIndex, sizeof(cl_mem), reinterpret_cast<const void*>(&(mem.destPtr)));
-    CheckError(err);
+    CLUtils::CheckError(err);
   }
   else
   {

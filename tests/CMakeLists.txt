@@ -1,0 +1,6 @@
+add_executable(sandbox sandbox_app.cpp)
+target_link_libraries(sandbox PRIVATE cl_framework)
+target_include_directories(sandbox PRIVATE ${CL_FRAMEWORK_INCLUDES})
+add_executable(image_test image_test.cpp)
+target_link_libraries(image_test PRIVATE cl_framework)
+target_include_directories(image_test PRIVATE ${CL_FRAMEWORK_INCLUDES})

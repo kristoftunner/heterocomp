@@ -47,12 +47,12 @@ int main()
   framework.SetKernelBufferArg<cl_int>(0, 1, srcB);
   framework.SetKernelBufferArg<cl_int>(0, 2, destC);
   /* Arguments for Blend kernel */
-  err = clSetKernelArg(framework.GetKernel(0), 0, sizeof(cl_int), &srcA);
-  CLFramework::CheckError(err);
+  cl_int err = clSetKernelArg(framework.GetKernel(0), 0, sizeof(cl_int), &srcA);
+  CLUtils::CheckError(err);
   err = clSetKernelArg(framework.GetKernel(0), 1, sizeof(cl_int), &srcB);
-  CLFramework::CheckError(err);
+  CLUtils::CheckError(err);
   err = clSetKernelArg(framework.GetKernel(0), 2, sizeof(cl_mem), &destC);
-  CLFramework::CheckError(err);
+  CLUtils::CheckError(err);
   std::vector<size_t> globalWorkSize = { arrayDepth, arrayWidth, arrayHeight };
   framework.RunKernel(globalWorkSize,0);
   for(auto i = 0; i < arrayHeight*arrayHeight*arrayDepth; i++)
@@ -62,7 +62,6 @@ int main()
       std::cout << "fail, dest is: " << destC.hostPtr[i] << std::endl; 
     }
   }
-  std::vector<size_t> globalWorkSize = {arrayDepth, arrayWidth, arrayHeight};
   framework.RunKernel(globalWorkSize, 0);
   
   srcA.~CLMemory();

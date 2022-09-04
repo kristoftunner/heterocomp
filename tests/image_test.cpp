@@ -32,35 +32,36 @@ int main()
   constexpr size_t imageHeight = 800;
   constexpr size_t imageDepth = 3;
   const cl_image_format imgFormat = {CL_RGB, CL_UNSIGNED_INT8};
-  cl_int err;
   const cl_image_desc desc = { 
-    .image_type = CL_MEM_OBJECT_IMAGE2D,
-    .image_width = imageWidth,
-    .image_height = imageHeight,
-    .image_depth = 0,
-    .image_array_size = 0,
-    .image_row_pitch = imageWidth * imageHeight * 3,
-    .num_mip_levels = 0,
-    .num_samples = 0,
-    .mem_object = NULL 
+    CL_MEM_OBJECT_IMAGE2D,
+    imageWidth, 
+    imageHeight,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
   };
+  
+  cl_int err;
   cl_mem astroImage2D = clCreateImage2D(framework.GetContext(), CL_MEM_READ_ONLY | CL_MEM_HOST_WRITE_ONLY, &imgFormat, imageWidth, imageHeight, imageWidth * imageHeight*imageDepth, reinterpret_cast<void*>(astroImage.data()), &err);
-  CLFramework::CheckError(err);
+  CLUtils::CheckError(err);
   cl_mem pigeonImage2D = clCreateImage2D(framework.GetContext(), CL_MEM_READ_ONLY | CL_MEM_HOST_WRITE_ONLY, &imgFormat, imageWidth, imageHeight, imageWidth * imageHeight*imageDepth, reinterpret_cast<void*>(pigeonImage.data()), &err);
-  CLFramework::CheckError(err);
+  CLUtils::CheckError(err);
   size_t optimizedSize = ((sizeof(uint8_t) * imageWidth*imageHeight*imageDepth - 1) / 64 + 1) * 64;
   uint8_t* destPtr = reinterpret_cast<uint8_t*>(EnvUtils::AllocAligned(optimizedSize, 4096));
   
   cl_mem destImage = clCreateImage2D(framework.GetContext(), CL_MEM_WRITE_ONLY | CL_MEM_HOST_WRITE_ONLY, &imgFormat, imageWidth, imageHeight, imageWidth * imageHeight*imageDepth, &destPtr, &err);
-  CLFramework::CheckError(err);
+  CLUtils::CheckError(err);
 
   /* Arguments for Blend kernel */
   err = clSetKernelArg(framework.GetKernel(0), 2, sizeof(cl_mem), &astroImage2D);
-  CLFramework::CheckError(err);
+  CLUtils::CheckError(err);
   err = clSetKernelArg(framework.GetKernel(0), 3, sizeof(cl_mem), &pigeonImage2D);
-  CLFramework::CheckError(err);
+  CLUtils::CheckError(err);
   err = clSetKernelArg(framework.GetKernel(0), 4, sizeof(cl_mem), &destImage);
-  CLFramework::CheckError(err);
+  CLUtils::CheckError(err);
   std::vector<size_t> globalWorkSize = {imageDepth, imageWidth, imageHeight};
   framework.RunKernel(globalWorkSize, 1);
   for(auto i = 0; i < imageDepth*imageWidth*imageHeight; i++)
